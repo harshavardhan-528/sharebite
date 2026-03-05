@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Register - ShareBite</title>
+
+<style>
+
+body{
+margin:0;
+font-family:Arial;
+background:#f4f4f4;
+display:flex;
+justify-content:center;
+align-items:center;
+height:100vh;
+}
+
+.card{
+background:white;
+padding:30px;
+border-radius:8px;
+box-shadow:0 4px 10px rgba(0,0,0,0.2);
+width:320px;
+}
+
+input,select{
+width:100%;
+padding:10px;
+margin:10px 0;
+border:1px solid #ccc;
+border-radius:4px;
+}
+
+button{
+width:100%;
+padding:10px;
+background:#28a745;
+color:white;
+border:none;
+border-radius:4px;
+cursor:pointer;
+}
+
+button:hover{
+background:#218838;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="card">
+
+<h2>Create Account</h2>
+
+<input id="name" placeholder="Name">
+
+<input id="email" type="email" placeholder="Email">
+
+<input id="phone" placeholder="Phone">
+
+<input id="password" type="password" placeholder="Password">
+
+<label for="role">Select Role</label>
+
+<select id="role" name="role">
+
+<option value="donor">Donor</option>
+
+<option value="volunteer">Volunteer</option>
+
+<option value="user">User</option>
+
+</select>
+
+<button onclick="register()">Register</button>
+
+</div>
+
+<script>
+
+function register(){
+
+fetch("/api/users/register",{
+
+method:"POST",
+
+headers:{
+"Content-Type":"application/json"
+},
+
+body:JSON.stringify({
+
+name:document.getElementById("name").value,
+email:document.getElementById("email").value,
+phone:document.getElementById("phone").value,
+password:document.getElementById("password").value,
+role:document.getElementById("role").value
+
+})
+
+})
+.then(res=>res.json())
+.then(data=>{
+alert("Registration successful");
+window.location.href="login.html";
+})
+.catch(()=>{
+alert("Registration failed");
+});
+
+}
+
+</script>
+
+</body>
+</html>

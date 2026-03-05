@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>ShareBite Food Map</title>
+
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+<style>
+
+body{
+margin:0;
+font-family:Arial;
+}
+
+#map{
+height:100vh;
+}
+
+button{
+
+padding:6px 10px;
+border:none;
+border-radius:4px;
+background:#28a745;
+color:white;
+cursor:pointer;
+
+}
+
+.navigate{
+background:#007bff;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+<script>
+
+const socket = io("http://localhost:5000");
+
+/* Create map */
+
+const map = L.map("map").setView([14.6819,77.6006],13);
+
+L.tileLayer(
+"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+{
+attribution:"© OpenStreetMap"
+}
+).addTo(map);
+
+let volunteerMarker;
+
+/* Listen volunteer live location */
+
+socket.on("volunteerLocation",(data)=>{
+
+const lat = data.lat;
+const lng = data.lng;
+
+if(volunteerMarker){
+
+volunteerMarker.setLatLng([lat,lng]);
+
+}else{
+
+volunteerMarker = L.marker([lat,lng])
+.addTo(map)
+.bindPopup("Volunteer Live Location");
+
+}
+
+});
+
+
+/* Detect user location */
+
+navigator.geolocation.getCurrentPosition(position=>{
+
+const lat = position.coords.latitude;
+const lng = position.coords.longitude;
+
+map.setView([lat,lng],13);
+
+L.marker([lat,lng])
+.addTo(map)
+.bindPopup("You are here");
+
+
+/* Load nearby food */
+
+fetch(`/api/food/nearby?lat=${lat}&lng=${lng}`)
+
+.then(res=>res.json())
+
+.then(data=>{
+
+data.foods.forEach(food=>{
+
+L.marker([food.latitude,food.longitude])
+.addTo(map)
+.bindPopup(
+
+`<b>${food.foodType}</b><br>
+Quantity: ${food.quantity}<br>
+Address: ${food.pickupAddress}<br><br>
+
+<button onclick="acceptFood('${food._id}')">
+Accept
+</button>
+
+<br><br>
+
+<button class="navigate"
+onclick="navigate(${food.latitude},${food.longitude})">
+
+Navigate
+
+</button>
+
+`
+
+);
+
+});
+
+});
+
+});
+
+
+/* Accept food */
+
+function acceptFood(foodId){
+
+fetch("/api/food/accept",{
+
+method:"PATCH",
+
+headers:{
+"Content-Type":"application/json"
+},
+
+body:JSON.stringify({
+
+foodId:foodId,
+volunteerId:"demoVolunteer"
+
+})
+
+})
+
+.then(res=>res.json())
+.then(data=>{
+
+alert("Food accepted");
+
+location.reload();
+
+});
+
+}
+
+
+/* Google navigation */
+
+function navigate(lat,lng){
+
+const url =
+`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+
+window.open(url,"_blank");
+
+}
+
+</script>
+
+</body>
+
+</html>

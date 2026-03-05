@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Donate Food - ShareBite</title>
+
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<style>
+
+body{
+font-family:Arial;
+margin:0;
+background:#f4f4f4;
+}
+
+.container{
+width:420px;
+margin:20px auto;
+background:white;
+padding:20px;
+border-radius:8px;
+box-shadow:0 4px 10px rgba(0,0,0,0.2);
+}
+
+h2{
+text-align:center;
+}
+
+input,textarea{
+width:100%;
+padding:10px;
+margin:8px 0;
+border:1px solid #ccc;
+border-radius:4px;
+}
+
+button{
+width:100%;
+padding:12px;
+background:#28a745;
+color:white;
+border:none;
+border-radius:5px;
+cursor:pointer;
+margin-top:5px;
+}
+
+.detect{
+background:#007bff;
+}
+
+#map{
+height:300px;
+margin-top:10px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>Donate Food</h2>
+
+<form id="donateForm">
+
+<input type="text" id="donor" placeholder="User ID" required>
+
+<input type="text" id="foodType" placeholder="Food Type" required>
+
+<input type="text" id="quantity" placeholder="Quantity (20 plates)" required>
+
+<textarea id="description" placeholder="Food Description"></textarea>
+
+<input type="text" id="pickupAddress" placeholder="Type location like Swiggy">
+
+<button type="button" class="detect" onclick="detectLocation()">
+Use Current Location
+</button>
+
+<label for="expiryTime">Expiry Time</label>
+<input type="datetime-local" id="expiryTime" name="expiryTime" required>
+
+<label for="image">Upload Image</label>
+<input type="file" id="image" name="image" accept="image/*">
+
+<div id="map"></div>
+
+<button type="submit">Donate Food</button>
+
+</form>
+
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+
+let latitude="";
+let longitude="";
+
+/* Initialize map */
+
+const map = L.map("map").setView([14.6819,77.6006],13);
+
+L.tileLayer(
+"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+{attribution:"© OpenStreetMap"}
+).addTo(map);
+
+let marker;
+
+
+
+/* Detect current location */
+
+function detectLocation(){
+
+navigator.geolocation.getCurrentPosition(position=>{
+
+latitude = position.coords.latitude;
+longitude = position.coords.longitude;
+
+map.setView([latitude,longitude],15);
+
+if(marker){
+map.removeLayer(marker);
+}
+
+marker = L.marker([latitude,longitude]).addTo(map);
+
+document.getElementById("pickupAddress").value =
+"Current Location";
+
+});
+
+}
+
+
+
+/* Convert typed address to coordinates */
+
+document.getElementById("pickupAddress")
+.addEventListener("change",function(){
+
+const address = this.value;
+
+fetch(
+`https://nominatim.openstreetmap.org/search?format=json&q=${address}`
+)
+
+.then(res=>res.json())
+
+.then(data=>{
+
+if(data.length > 0){
+
+latitude = data[0].lat;
+longitude = data[0].lon;
+
+map.setView([latitude,longitude],15);
+
+if(marker){
+map.removeLayer(marker);
+}
+
+marker = L.marker([latitude,longitude]).addTo(map);
+
+}
+
+});
+
+});
+
+
+
+/* Submit donation */
+
+document.getElementById("donateForm")
+.addEventListener("submit",function(e){
+
+e.preventDefault();
+
+const formData = new FormData();
+
+formData.append("donor",
+document.getElementById("donor").value);
+
+formData.append("foodType",
+document.getElementById("foodType").value);
+
+formData.append("quantity",
+document.getElementById("quantity").value);
+
+formData.append("description",
+document.getElementById("description").value);
+
+formData.append("pickupAddress",
+document.getElementById("pickupAddress").value);
+
+formData.append("latitude",latitude);
+formData.append("longitude",longitude);
+
+formData.append("expiryTime",
+document.getElementById("expiryTime").value);
+
+const file =
+document.getElementById("image").files[0];
+
+if(file){
+formData.append("image",file);
+}
+
+fetch("/api/food/donate",{
+
+method:"POST",
+body:formData
+
+})
+.then(res=>res.json())
+.then(data=>{
+
+alert("Food donation posted successfully!");
+
+document.getElementById("donateForm").reset();
+
+})
+.catch(()=>{
+alert("Error posting donation");
+});
+
+});
+
+</script>
+
+</body>
+
+</html>
