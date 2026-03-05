@@ -1,5 +1,5 @@
 const Food = require("../models/food");
-const User = require("../models/User");
+const User = require("../models/user");
 const Request = require("../models/request");
 
 exports.getStats = async (req,res)=>{
