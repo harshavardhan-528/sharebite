@@ -6,7 +6,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Volunteer Live Tracking</title>
+<title>Volunteer Live Tracking | ShareBite</title>
 
 <link rel="stylesheet"
 href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -16,6 +16,7 @@ href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 body{
 margin:0;
 font-family:Arial;
+background:#f4f4f4;
 }
 
 #map{
@@ -36,72 +37,107 @@ width:100%;
 
 <script>
 
-/* Connect socket */
-const socket = io();
+/* =========================
+CONNECT SOCKET
+========================= */
 
-/* Create Map */
+const socket = io(window.location.origin);
+
+
+/* =========================
+CREATE MAP
+========================= */
 
 const map = L.map("map").setView([14.6819,77.6006],13);
 
 L.tileLayer(
 "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
 {
+maxZoom:19,
 attribution:"© OpenStreetMap"
 }
 ).addTo(map);
 
-let marker;
+
+/* =========================
+VOLUNTEER MARKER
+========================= */
+
+let volunteerMarker;
 
 
-/* Send volunteer location */
+/* =========================
+SEND LOCATION TO SERVER
+========================= */
 
 function sendLocation(){
 
-if(navigator.geolocation){
+if(!navigator.geolocation){
 
-navigator.geolocation.getCurrentPosition(position=>{
+alert("Geolocation not supported");
+return;
+
+}
+
+navigator.geolocation.getCurrentPosition(
+
+(position)=>{
 
 const lat = position.coords.latitude;
 const lng = position.coords.longitude;
 
-/* Send location to server */
+
+/* Send location to backend */
 
 socket.emit("volunteerLocation",{
 lat:lat,
 lng:lng
 });
 
-/* Show volunteer marker */
 
-if(marker){
+/* Update volunteer marker */
 
-marker.setLatLng([lat,lng]);
+if(volunteerMarker){
+
+volunteerMarker.setLatLng([lat,lng]);
 
 }else{
 
-marker = L.marker([lat,lng])
+volunteerMarker = L.marker([lat,lng])
 .addTo(map)
-.bindPopup("You (Volunteer)")
+.bindPopup("🚶 Volunteer Live Location")
 .openPopup();
 
 }
 
-});
+
+/* Center map on volunteer */
+
+map.setView([lat,lng],15);
+
+},
+
+(error)=>{
+
+console.log("Location error:",error);
 
 }
 
+);
+
 }
 
 
-/* Update location every 5 seconds */
+/* =========================
+AUTO SEND LOCATION
+========================= */
 
-setInterval(sendLocation,5000);
+setInterval(sendLocation,3000);
 
 
-
-/* ========================
+/* =========================
 REAL TIME NOTIFICATIONS
-======================== */
+========================= */
 
 
 /* New donation */
@@ -143,4 +179,5 @@ alert("✅ Food request accepted by volunteer");
 </script>
 
 </body>
+
 </html>

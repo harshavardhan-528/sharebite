@@ -2,29 +2,71 @@ const express = require("express");
 const router = express.Router();
 
 const foodController = require("../controllers/foodController");
-const upload = require("../middleware/upload");
 
-// Donate food with image
+const multer = require("multer");
+const path = require("path");
+
+/* =========================
+   MULTER IMAGE UPLOAD
+========================= */
+
+const storage = multer.diskStorage({
+
+destination: function(req,file,cb){
+
+cb(null,"public/uploads");
+
+},
+
+filename: function(req,file,cb){
+
+cb(null,Date.now()+path.extname(file.originalname));
+
+}
+
+});
+
+const upload = multer({ storage: storage });
+
+
+/* =========================
+   ROUTES
+========================= */
+
+/* Donate food */
+
 router.post(
-  "/donate",
-  upload.single("image"),
-  (req, res, next) => {
-    console.log("MULTER HIT");
-    next();
-  },
-  foodController.donateFood
+"/donate",
+upload.single("image"),
+foodController.donateFood
 );
 
-// Get all food
-router.get("/all", foodController.getAllFood);
+/* Get all food */
 
-// Nearby food
-router.get("/nearby", foodController.getNearbyFood);
+router.get(
+"/all",
+foodController.getAllFood
+);
 
-// Accept food
-router.patch("/accept", foodController.acceptFood);
+/* Nearby food */
 
-// Update status
-router.patch("/status", foodController.updateFoodStatus);
+router.get(
+"/nearby",
+foodController.getNearbyFood
+);
+
+/* Accept food */
+
+router.patch(
+"/accept",
+foodController.acceptFood
+);
+
+/* Update food status */
+
+router.patch(
+"/status",
+foodController.updateFoodStatus
+);
 
 module.exports = router;

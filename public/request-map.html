@@ -9,27 +9,32 @@
 <title>Nearby Food Requests | ShareBite</title>
 
 <link rel="stylesheet"
-href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-/>
+href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
 <style>
 
 body{
 margin:0;
-font-family:Arial, Helvetica, sans-serif;
-}
-
-header{
-background:#28a745;
-color:white;
-padding:15px;
-text-align:center;
-font-size:20px;
+font-family:Arial;
 }
 
 #map{
-height:90vh;
-width:100%;
+height:100vh;
+}
+
+button{
+
+padding:6px 10px;
+border:none;
+border-radius:4px;
+background:#ff9800;
+color:white;
+cursor:pointer;
+
+}
+
+.navigate{
+background:#007bff;
 }
 
 </style>
@@ -38,97 +43,279 @@ width:100%;
 
 <body>
 
-<header>
-Nearby Food Requests
-</header>
-
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/socket.io/socket.io.js"></script>
 
 <script>
+
+/* ================================
+SOCKET CONNECTION
+================================ */
+
+const socket = io(window.location.origin);
+
+
+/* ================================
+CREATE MAP
+================================ */
 
 const map = L.map("map").setView([14.6819,77.6006],13);
 
 L.tileLayer(
 "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
 {
-maxZoom:19
+attribution:"© OpenStreetMap"
 }
 ).addTo(map);
 
+let volunteerMarker;
+let userMarker;
+let routeLine;
 
-/* Detect current location */
 
-if(navigator.geolocation){
+/* ================================
+DISTANCE FUNCTION
+================================ */
 
-navigator.geolocation.getCurrentPosition(loadRequests,locationError);
+function calculateDistance(lat1,lon1,lat2,lon2){
 
-}else{
+const R = 6371;
 
-alert("Geolocation not supported");
+const dLat = (lat2-lat1)*Math.PI/180;
+const dLon = (lon2-lon1)*Math.PI/180;
+
+const a =
+Math.sin(dLat/2)*Math.sin(dLat/2) +
+Math.cos(lat1*Math.PI/180)*
+Math.cos(lat2*Math.PI/180)*
+Math.sin(dLon/2)*Math.sin(dLon/2);
+
+const c = 2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+
+return R*c;
 
 }
 
 
-/* Load nearby requests */
+/* ================================
+ETA FUNCTION
+================================ */
 
-async function loadRequests(position){
+function calculateETA(distance){
+
+const speed = 30;
+
+const time = distance/speed;
+
+return Math.round(time*60);
+
+}
+
+
+/* ================================
+DRAW ROUTE
+================================ */
+
+function drawRoute(vLat,vLng,rLat,rLng){
+
+const route = [
+[vLat,vLng],
+[rLat,rLng]
+];
+
+if(routeLine){
+
+map.removeLayer(routeLine);
+
+}
+
+routeLine = L.polyline(route,{
+color:"purple",
+weight:4
+}).addTo(map);
+
+}
+
+
+/* ================================
+DETECT USER LOCATION
+================================ */
+
+navigator.geolocation.getCurrentPosition(position=>{
 
 const lat = position.coords.latitude;
 const lng = position.coords.longitude;
 
-/* Show user location */
-
-L.marker([lat,lng])
-.addTo(map)
-.bindPopup("You are here")
-.openPopup();
-
 map.setView([lat,lng],13);
 
+userMarker = L.marker([lat,lng])
+.addTo(map)
+.bindPopup("You are here");
 
-try{
 
-const response = await fetch(`/api/request/nearby?lat=${lat}&lng=${lng}`);
+/* ================================
+LOAD NEARBY REQUESTS
+================================ */
 
-const data = await response.json();
+fetch(`/api/request/nearby?lat=${lat}&lng=${lng}`)
 
-if(data.requests){
+.then(res=>res.json())
+
+.then(data=>{
 
 data.requests.forEach(request=>{
 
-L.marker([request.latitude,request.longitude])
-.addTo(map)
-.bindPopup(
-"<b>Food Needed:</b> "+request.foodType+
-"<br><b>Quantity:</b> "+request.quantity+
-"<br><b>Location:</b> "+request.location+
-"<br><b>Status:</b> "+request.status
+const distance = calculateDistance(
+lat,
+lng,
+request.latitude,
+request.longitude
 );
+
+const eta = calculateETA(distance);
+
+L.marker([request.latitude,request.longitude])
+
+.addTo(map)
+
+.bindPopup(
+
+`<b>Food Needed</b><br>
+
+Type: ${request.foodType}<br>
+
+Quantity: ${request.quantity}<br>
+
+Location: ${request.location}<br>
+
+Distance: ${distance.toFixed(2)} km<br>
+
+ETA: ${eta} min<br><br>
+
+<button onclick="acceptRequest('${request._id}')">
+Accept Request
+</button>
+
+<br><br>
+
+<button class="navigate"
+onclick="navigate(${request.latitude},${request.longitude})">
+
+Navigate
+
+</button>
+
+`
+
+);
+
+});
+
+});
+
+});
+
+
+/* ================================
+ACCEPT REQUEST
+================================ */
+
+function acceptRequest(requestId){
+
+fetch("/api/request/accept",{
+
+method:"POST",
+
+headers:{
+"Content-Type":"application/json"
+},
+
+body:JSON.stringify({
+
+requestId:requestId,
+volunteerId:"demoVolunteer"
+
+})
+
+})
+
+.then(res=>res.json())
+
+.then(data=>{
+
+alert("Request accepted");
+
+location.reload();
 
 });
 
 }
 
-}catch(error){
 
-console.error("Error loading requests:",error);
+/* ================================
+GOOGLE NAVIGATION
+================================ */
+
+function navigate(lat,lng){
+
+const url =
+`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+
+window.open(url,"_blank");
+
+}
+
+
+/* ================================
+VOLUNTEER LIVE LOCATION
+================================ */
+
+socket.on("updateVolunteerLocation",(data)=>{
+
+const lat = data.lat;
+const lng = data.lng;
+
+if(volunteerMarker){
+
+volunteerMarker.setLatLng([lat,lng]);
+
+}else{
+
+volunteerMarker = L.marker([lat,lng])
+.addTo(map)
+.bindPopup("Volunteer Live Location");
 
 }
 
-}
+});
 
 
-/* Location error */
+/* ================================
+REAL TIME NOTIFICATIONS
+================================ */
 
-function locationError(){
+socket.on("newFoodRequest",(data)=>{
 
-alert("Unable to detect location");
+alert(
+"📢 New Food Request\n"+
+"Food: "+data.foodType+
+"\nQuantity: "+data.quantity+
+"\nLocation: "+data.location
+);
 
-}
+});
+
+
+socket.on("requestAccepted",(data)=>{
+
+alert("✅ A volunteer accepted a food request");
+
+});
 
 </script>
 
 </body>
+
 </html>

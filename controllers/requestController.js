@@ -1,4 +1,5 @@
 const Request = require("../models/request");
+const User = require("../models/user");
 
 
 /* =========================
@@ -24,21 +25,39 @@ requester,
 foodType,
 quantity,
 location,
-latitude,
-longitude,
+
+latitude: parseFloat(latitude),
+longitude: parseFloat(longitude),
+
+locationPoint:{
+type:"Point",
+coordinates:[
+parseFloat(longitude),
+parseFloat(latitude)
+]
+},
+
 status:"pending"
 
 });
 
 await request.save();
 
+
+/* SOCKET NOTIFICATION */
+
 const io = req.app.get("io");
+
+if(io){
 
 io.emit("newFoodRequest",{
 foodType,
 quantity,
 location
 });
+
+}
+
 
 res.status(201).json({
 
@@ -56,6 +75,7 @@ error:err.message
 }
 
 };
+
 
 
 /* =========================
@@ -80,6 +100,7 @@ error:err.message
 }
 
 };
+
 
 
 /* =========================
@@ -107,12 +128,18 @@ request.volunteer=volunteerId;
 
 await request.save();
 
+
 const io = req.app.get("io");
+
+if(io){
 
 io.emit("requestAccepted",{
 requestId,
 status:"accepted"
 });
+
+}
+
 
 res.json({
 
@@ -130,6 +157,7 @@ error:err.message
 }
 
 };
+
 
 
 /* =========================
@@ -174,6 +202,7 @@ error:err.message
 };
 
 
+
 /* =========================
    Delete Request
 ========================= */
@@ -201,6 +230,9 @@ error:err.message
 }
 
 };
+
+
+
 /* =========================
    Get Nearby Requests
 ========================= */
@@ -216,19 +248,20 @@ const longitude = parseFloat(lng);
 
 const requests = await Request.find({
 
-latitude:{
-$gte: latitude - 0.1,
-$lte: latitude + 0.1
+locationPoint:{
+$near:{
+$geometry:{
+type:"Point",
+coordinates:[longitude,latitude]
 },
-
-longitude:{
-$gte: longitude - 0.1,
-$lte: longitude + 0.1
+$maxDistance:5000
+}
 },
 
 status:"pending"
 
 }).populate("requester","name phone");
+
 
 res.json({
 

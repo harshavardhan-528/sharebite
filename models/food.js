@@ -14,19 +14,29 @@ required:true
 },
 
 quantity:{
-type:String,
+type:Number,
 required:true
 },
 
-description:String,
+description:{
+type:String
+},
 
-pickupAddress:String,
+pickupAddress:{
+type:String
+},
 
-latitude:Number,
+/* Coordinates for map */
 
-longitude:Number,
+latitude:{
+type:Number
+},
 
-donationTime:Date,
+longitude:{
+type:Number
+},
+
+/* GeoJSON location for distance queries */
 
 location:{
 type:{
@@ -34,12 +44,26 @@ type:String,
 enum:["Point"],
 default:"Point"
 },
-coordinates:[Number]
+coordinates:{
+type:[Number],
+index:"2dsphere"
+}
 },
 
-expiryTime:Date,
+/* Donation time */
 
-image:String,
+donationTime:{
+type:Date,
+default:Date.now
+},
+
+expiryTime:{
+type:Date
+},
+
+image:{
+type:String
+},
 
 donorType:{
 type:String,
@@ -49,6 +73,7 @@ default:"instant"
 
 status:{
 type:String,
+enum:["available","accepted","picked","delivered"],
 default:"available"
 },
 
@@ -59,6 +84,8 @@ default:Date.now
 
 });
 
+/* Geo index for nearby search */
+
 foodSchema.index({location:"2dsphere"});
 
-module.exports=mongoose.model("Food",foodSchema);
+module.exports = mongoose.model("Food",foodSchema);

@@ -4,6 +4,8 @@ const connectDB = require("./config/db");
 const http = require("http");
 const { Server } = require("socket.io");
 const path = require("path");
+const foodController = require("./controllers/foodController");
+
 
 dotenv.config();
 
@@ -18,6 +20,16 @@ const io = new Server(server,{
     origin:"*"
   }
 });
+
+/* =========================
+RUN EXPIRY CLEANER
+========================= */
+
+setInterval(()=>{
+
+foodController.removeExpiredFood();
+
+},60000);
 
 /* Make socket available globally */
 app.set("io",io);

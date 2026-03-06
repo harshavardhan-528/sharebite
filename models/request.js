@@ -14,7 +14,7 @@ required:true
 },
 
 quantity:{
-type:String,
+type:Number,
 required:true
 },
 
@@ -23,9 +23,29 @@ type:String,
 required:true
 },
 
-latitude:Number,
+/* Coordinates */
 
-longitude:Number,
+latitude:{
+type:Number
+},
+
+longitude:{
+type:Number
+},
+
+/* GeoJSON location for map queries */
+
+locationPoint:{
+type:{
+type:String,
+enum:["Point"],
+default:"Point"
+},
+coordinates:{
+type:[Number],
+index:"2dsphere"
+}
+},
 
 volunteer:{
 type:mongoose.Schema.Types.ObjectId,
@@ -34,6 +54,7 @@ ref:"User"
 
 status:{
 type:String,
+enum:["pending","accepted","completed"],
 default:"pending"
 },
 
@@ -43,5 +64,9 @@ default:Date.now
 }
 
 });
+
+/* Enable geospatial queries */
+
+requestSchema.index({locationPoint:"2dsphere"});
 
 module.exports = mongoose.model("Request",requestSchema);

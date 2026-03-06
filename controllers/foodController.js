@@ -4,6 +4,31 @@ const sendMail = require("../utils/sendMail");
 
 
 /* ===========================
+   DISTANCE FUNCTION
+=========================== */
+
+function calculateDistance(lat1, lon1, lat2, lon2){
+
+const R = 6371;
+
+const dLat = (lat2 - lat1) * Math.PI / 180;
+const dLon = (lon2 - lon1) * Math.PI / 180;
+
+const a =
+Math.sin(dLat/2) * Math.sin(dLat/2) +
+Math.cos(lat1 * Math.PI/180) *
+Math.cos(lat2 * Math.PI/180) *
+Math.sin(dLon/2) * Math.sin(dLon/2);
+
+const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+return R * c;
+
+}
+
+
+
+/* ===========================
    DONATE FOOD
 =========================== */
 
@@ -23,6 +48,9 @@ donationTime,
 expiryTime
 } = req.body;
 
+const lat = parseFloat(latitude);
+const lng = parseFloat(longitude);
+
 const image = req.file ? req.file.filename : null;
 
 const food = new Food({
@@ -32,16 +60,15 @@ foodType,
 quantity,
 description,
 pickupAddress,
-latitude: parseFloat(latitude),
-longitude: parseFloat(longitude),
-donationTime,
+
+latitude: lat,
+longitude: lng,
+
+donationTime: donationTime || new Date(),
 
 location:{
 type:"Point",
-coordinates:[
-parseFloat(longitude),
-parseFloat(latitude)
-]
+coordinates:[lng,lat]
 },
 
 expiryTime,
@@ -52,21 +79,70 @@ status:"available"
 
 await food.save();
 
+
+/* ===========================
+   FIND NEAREST VOLUNTEER
+=========================== */
+
+const volunteers = await User.find({ role:"volunteer" });
+
+let nearestVolunteer = null;
+let minDistance = Infinity;
+
+volunteers.forEach(v => {
+
+if(v.latitude && v.longitude){
+
+const distance = calculateDistance(
+lat,
+lng,
+v.latitude,
+v.longitude
+);
+
+if(distance < minDistance){
+
+minDistance = distance;
+nearestVolunteer = v;
+
+}
+
+}
+
+});
+
+if(nearestVolunteer){
+
+food.volunteer = nearestVolunteer._id;
+food.status = "assigned";
+
+await food.save();
+
+}
+
+
+
+/* ===========================
+   SOCKET NOTIFICATION
+=========================== */
+
 const io = req.app.get("io");
+
+if(io){
 
 io.emit("newFoodDonation",{
 foodType,
 quantity,
-location: pickupAddress
+location:pickupAddress
 });
 
-res.status(201).json({
-message:"Food donation posted successfully",
-food
-});
+}
 
 
-/* EMAIL TO DONOR */
+
+/* ===========================
+   EMAIL TO DONOR
+=========================== */
 
 const donorUser = await User.findById(donor);
 
@@ -86,16 +162,19 @@ Location: ${pickupAddress}
 
 <p>Your food will reach someone in need ❤️</p>
 
-ShareBite Team
-
-`
+ShareBite Team`
 
 );
 
 }
 
 
-/* EMAIL TO ADMIN */
+
+/* ===========================
+   EMAIL TO ADMIN
+=========================== */
+
+if(process.env.ADMIN_EMAIL){
 
 await sendMail(
 
@@ -107,11 +186,12 @@ process.env.ADMIN_EMAIL,
 
 Food: ${foodType}<br>
 Quantity: ${quantity}<br>
-Location: ${pickupAddress}
-
-`
+Location: ${pickupAddress}`
 
 );
+
+}
+
 
 
 res.status(201).json({
@@ -168,16 +248,16 @@ try{
 
 const {lat,lng} = req.query;
 
+const latitude = parseFloat(lat);
+const longitude = parseFloat(lng);
+
 const foods = await Food.find({
 
 location:{
 $near:{
 $geometry:{
 type:"Point",
-coordinates:[
-parseFloat(lng),
-parseFloat(lat)
-]
+coordinates:[longitude,latitude]
 },
 $maxDistance:5000
 }
@@ -188,10 +268,29 @@ status:"available"
 }).populate("donor","name phone");
 
 
+/* Add distance to response */
+
+const foodsWithDistance = foods.map(food => {
+
+const distance = calculateDistance(
+latitude,
+longitude,
+food.latitude,
+food.longitude
+);
+
+return {
+...food._doc,
+distance: distance.toFixed(2)
+};
+
+});
+
+
 res.json({
 
-count:foods.length,
-foods
+count:foodsWithDistance.length,
+foods:foodsWithDistance
 
 });
 
@@ -227,14 +326,15 @@ message:"Food donation not found"
 
 }
 
-food.status="accepted";
-food.volunteer=volunteerId;
+food.status = "accepted";
+food.volunteer = volunteerId;
 
 await food.save();
 
 
 const volunteer = await User.findById(volunteerId);
 const donorUser = await User.findById(food.donor);
+
 
 
 /* EMAIL TO VOLUNTEER */
@@ -251,18 +351,17 @@ volunteer.email,
 
 Food: ${food.foodType}<br>
 Quantity: ${food.quantity}<br>
-Location: ${food.pickupAddress}
-
-`
+Location: ${food.pickupAddress}`
 
 );
 
 }
 
 
+
 /* EMAIL TO DONOR */
 
-if(donorUser){
+if(donorUser && volunteer){
 
 await sendMail(
 
@@ -273,13 +372,12 @@ donorUser.email,
 `<h2>Your food donation is being picked up</h2>
 
 Volunteer: ${volunteer.name}<br>
-Phone: ${volunteer.phone}
-
-`
+Phone: ${volunteer.phone}`
 
 );
 
 }
+
 
 
 res.json({
@@ -326,9 +424,24 @@ food.status = status;
 await food.save();
 
 
+/* SOCKET DELIVERY UPDATE */
+
+const io = req.app.get("io");
+
+if(io){
+
+io.emit("deliveryUpdate",{
+foodId,
+status
+});
+
+}
+
+
+
 /* EMAIL WHEN DELIVERED */
 
-if(status==="delivered"){
+if(status === "delivered"){
 
 const donorUser = await User.findById(food.donor);
 
@@ -347,9 +460,7 @@ Quantity: ${food.quantity}
 
 <p>Thank you for helping others ❤️</p>
 
-ShareBite Team
-
-`
+ShareBite Team`
 
 );
 
@@ -370,6 +481,36 @@ food
 res.status(500).json({
 error:error.message
 });
+
+}
+
+};
+
+/* =========================
+AUTO REMOVE EXPIRED FOOD
+========================= */
+
+exports.removeExpiredFood = async ()=>{
+
+try{
+
+const now = new Date();
+
+const expiredFoods = await Food.updateMany(
+{
+expiryTime:{ $lt: now },
+status:"available"
+},
+{
+status:"expired"
+}
+);
+
+console.log("Expired food cleaned");
+
+}catch(err){
+
+console.log("Expiry cleanup error:",err.message);
 
 }
 

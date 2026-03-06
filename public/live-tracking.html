@@ -6,7 +6,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Live Volunteer Tracking</title>
+<title>Live Food Tracking | ShareBite</title>
 
 <link rel="stylesheet"
 href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -16,11 +16,67 @@ href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 body{
 margin:0;
 font-family:Arial;
+background:#f4f4f4;
 }
 
+/* Map */
+
 #map{
-height:100vh;
+height:75vh;
 width:100%;
+}
+
+/* Delivery panel */
+
+#deliveryPanel{
+
+height:25vh;
+background:white;
+padding:15px;
+box-shadow:0 -2px 10px rgba(0,0,0,0.2);
+
+}
+
+.progress{
+
+display:flex;
+justify-content:space-between;
+margin-top:10px;
+
+}
+
+.step{
+
+text-align:center;
+flex:1;
+
+}
+
+.step span{
+
+display:block;
+margin-top:5px;
+
+}
+
+.active{
+color:green;
+font-weight:bold;
+}
+
+button{
+
+padding:8px 14px;
+border:none;
+background:#28a745;
+color:white;
+border-radius:6px;
+cursor:pointer;
+
+}
+
+button:hover{
+background:#1e7e34;
 }
 
 </style>
@@ -29,52 +85,238 @@ width:100%;
 
 <body>
 
+
+<!-- ================= MAP ================= -->
+
 <div id="map"></div>
+
+
+<!-- ================= DELIVERY PANEL ================= -->
+
+<div id="deliveryPanel">
+
+<h3>Food Delivery Tracking</h3>
+
+<p>
+
+Distance:
+<span id="distance">Calculating...</span>
+
+</p>
+
+<p>
+
+Estimated Time:
+<span id="eta">Calculating...</span>
+
+</p>
+
+<button onclick="navigateToVolunteer()">
+Navigate
+</button>
+
+
+<div class="progress">
+
+<div class="step active" id="step1">
+📦
+<span>Donation</span>
+</div>
+
+<div class="step" id="step2">
+🚚
+<span>Pickup</span>
+</div>
+
+<div class="step" id="step3">
+🛵
+<span>On the way</span>
+</div>
+
+<div class="step" id="step4">
+✅
+<span>Delivered</span>
+</div>
+
+</div>
+
+</div>
+
+
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="/socket.io/socket.io.js"></script>
 
 <script>
 
-const socket = io();
+/* ================= SOCKET ================= */
 
-/* Create map */
+const socket = io(window.location.origin);
+
+
+/* ================= MAP ================= */
 
 const map = L.map("map").setView([14.6819,77.6006],13);
 
 L.tileLayer(
 "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
 {
+maxZoom:19,
 attribution:"© OpenStreetMap"
 }
 ).addTo(map);
 
+
+/* ================= MARKERS ================= */
+
 let volunteerMarker;
+let userMarker;
+
+let volunteerLat;
+let volunteerLng;
 
 
-/* Listen for volunteer location */
+/* ================= USER LOCATION ================= */
+
+navigator.geolocation.getCurrentPosition(position=>{
+
+const lat = position.coords.latitude;
+const lng = position.coords.longitude;
+
+userMarker = L.marker([lat,lng])
+.addTo(map)
+.bindPopup("You");
+
+map.setView([lat,lng],14);
+
+});
+
+
+/* ================= DISTANCE FUNCTION ================= */
+
+function calculateDistance(lat1, lon1, lat2, lon2){
+
+const R = 6371;
+
+const dLat = (lat2-lat1)*Math.PI/180;
+const dLon = (lon2-lon1)*Math.PI/180;
+
+const a =
+Math.sin(dLat/2)*Math.sin(dLat/2) +
+Math.cos(lat1*Math.PI/180)*
+Math.cos(lat2*Math.PI/180)*
+Math.sin(dLon/2)*Math.sin(dLon/2);
+
+const c = 2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+
+return R*c;
+
+}
+
+
+/* ================= ETA FUNCTION ================= */
+
+function calculateETA(distance){
+
+const speed = 30; 
+
+const time = distance / speed;
+
+return Math.round(time*60);
+
+}
+
+
+/* ================= TRACK VOLUNTEER ================= */
 
 socket.on("updateVolunteerLocation",(data)=>{
 
-const lat = data.lat;
-const lng = data.lng;
+volunteerLat = data.lat;
+volunteerLng = data.lng;
 
 if(volunteerMarker){
 
-volunteerMarker.setLatLng([lat,lng]);
+volunteerMarker.setLatLng([data.lat,data.lng]);
 
 }else{
 
-volunteerMarker = L.marker([lat,lng])
+volunteerMarker = L.marker([data.lat,data.lng])
 .addTo(map)
-.bindPopup("Volunteer is coming")
-.openPopup();
+.bindPopup("Volunteer delivering food");
+
+}
+
+
+/* Calculate distance */
+
+if(userMarker){
+
+const userLat = userMarker.getLatLng().lat;
+const userLng = userMarker.getLatLng().lng;
+
+const distance = calculateDistance(
+userLat,
+userLng,
+data.lat,
+data.lng
+);
+
+document.getElementById("distance").innerText =
+distance.toFixed(2)+" km";
+
+
+const eta = calculateETA(distance);
+
+document.getElementById("eta").innerText =
+eta+" minutes";
 
 }
 
 });
 
+
+/* ================= NAVIGATION ================= */
+
+function navigateToVolunteer(){
+
+if(!volunteerLat){
+
+alert("Volunteer location not available");
+
+return;
+
+}
+
+const url =
+`https://www.google.com/maps/dir/?api=1&destination=${volunteerLat},${volunteerLng}`;
+
+window.open(url,"_blank");
+
+}
+
+
+/* ================= DELIVERY STATUS ================= */
+
+function updateStep(step){
+
+document.querySelectorAll(".step")
+.forEach(el=>el.classList.remove("active"));
+
+document.getElementById("step"+step)
+.classList.add("active");
+
+}
+
+
+/* Example status simulation */
+
+setTimeout(()=>updateStep(2),5000);
+setTimeout(()=>updateStep(3),10000);
+setTimeout(()=>updateStep(4),20000);
+
+
 </script>
 
 </body>
+
 </html>

@@ -11,6 +11,9 @@
 <link rel="stylesheet"
 href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css"/>
+
 <style>
 
 body{
@@ -44,15 +47,23 @@ background:#007bff;
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+
 <script src="/socket.io/socket.io.js"></script>
 
 <script>
 
-/* Connect socket */
+/* =========================
+SOCKET CONNECTION
+========================= */
 
-const socket = io();
+const socket = io(window.location.origin);
 
-/* Create map */
+
+/* =========================
+CREATE MAP
+========================= */
 
 const map = L.map("map").setView([14.6819,77.6006],13);
 
@@ -64,31 +75,85 @@ attribution:"© OpenStreetMap"
 ).addTo(map);
 
 let volunteerMarker;
+let userMarker;
+let routingControl;
 
 
-/* Live volunteer location */
+/* =========================
+DISTANCE CALCULATION
+========================= */
 
-socket.on("updateVolunteerLocation",(data)=>{
+function getDistance(lat1, lon1, lat2, lon2){
 
-const lat = data.lat;
-const lng = data.lng;
+const R = 6371;
 
-if(volunteerMarker){
+const dLat = (lat2-lat1) * Math.PI/180;
+const dLon = (lon2-lon1) * Math.PI/180;
 
-volunteerMarker.setLatLng([lat,lng]);
+const a =
+Math.sin(dLat/2) * Math.sin(dLat/2) +
+Math.cos(lat1*Math.PI/180) *
+Math.cos(lat2*Math.PI/180) *
+Math.sin(dLon/2) *
+Math.sin(dLon/2);
 
-}else{
+const c = 2 * Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 
-volunteerMarker = L.marker([lat,lng])
-.addTo(map)
-.bindPopup("Volunteer Live Location");
+return R*c;
 
 }
 
-});
+
+/* =========================
+ETA CALCULATION
+========================= */
+
+function getETA(distance){
+
+const speed = 30;
+
+const time = (distance / speed) * 60;
+
+return Math.round(time);
+
+}
 
 
-/* Detect user location */
+/* =========================
+DRAW REAL ROAD ROUTE
+========================= */
+
+function drawRoute(startLat,startLng,endLat,endLng){
+
+if(routingControl){
+
+map.removeControl(routingControl);
+
+}
+
+routingControl = L.Routing.control({
+
+waypoints:[
+L.latLng(startLat,startLng),
+L.latLng(endLat,endLng)
+],
+
+routeWhileDragging:false,
+addWaypoints:false,
+draggableWaypoints:false,
+fitSelectedRoutes:true,
+show:false
+
+}).addTo(map);
+
+}
+
+
+/* =========================
+DETECT USER LOCATION
+========================= */
+
+if(navigator.geolocation){
 
 navigator.geolocation.getCurrentPosition(position=>{
 
@@ -97,12 +162,15 @@ const lng = position.coords.longitude;
 
 map.setView([lat,lng],13);
 
-L.marker([lat,lng])
+userMarker = L.marker([lat,lng])
 .addTo(map)
-.bindPopup("You are here");
+.bindPopup("You are here")
+.openPopup();
 
 
-/* Load nearby food */
+/* =========================
+LOAD NEARBY FOOD
+========================= */
 
 fetch(`/api/food/nearby?lat=${lat}&lng=${lng}`)
 
@@ -112,26 +180,32 @@ fetch(`/api/food/nearby?lat=${lat}&lng=${lng}`)
 
 data.foods.forEach(food=>{
 
-const donationTime = food.donationTime
-? new Date(food.donationTime).toLocaleString()
-: "Not specified";
+const distance = getDistance(
+lat,
+lng,
+food.latitude,
+food.longitude
+);
 
-const expiryTime = food.expiryTime
-? new Date(food.expiryTime).toLocaleString()
-: "Not specified";
-
+const eta = getETA(distance);
 
 L.marker([food.latitude,food.longitude])
+
 .addTo(map)
+
 .bindPopup(
 
 `<b>${food.foodType}</b><br>
-Quantity: ${food.quantity}<br>
-Address: ${food.pickupAddress}<br>
-Donation Time: ${donationTime}<br>
-Expiry Time: ${expiryTime}<br><br>
 
-<button onclick="acceptFood('${food._id}')">
+Quantity: ${food.quantity}<br>
+
+Address: ${food.pickupAddress}<br>
+
+Distance: ${distance.toFixed(2)} km<br>
+
+ETA: ${eta} min<br><br>
+
+<button onclick="acceptFood('${food._id}',${food.latitude},${food.longitude})">
 Accept
 </button>
 
@@ -154,10 +228,14 @@ Navigate
 
 });
 
+}
 
-/* Accept food */
 
-function acceptFood(foodId){
+/* =========================
+ACCEPT FOOD
+========================= */
+
+function acceptFood(foodId,lat,lng){
 
 fetch("/api/food/accept",{
 
@@ -177,18 +255,27 @@ volunteerId:"demoVolunteer"
 })
 
 .then(res=>res.json())
+
 .then(data=>{
 
 alert("Food accepted");
 
-location.reload();
+if(userMarker){
+
+const userPos = userMarker.getLatLng();
+
+drawRoute(userPos.lat,userPos.lng,lat,lng);
+
+}
 
 });
 
 }
 
 
-/* Google navigation */
+/* =========================
+GOOGLE NAVIGATION
+========================= */
 
 function navigate(lat,lng){
 
@@ -198,6 +285,56 @@ const url =
 window.open(url,"_blank");
 
 }
+
+
+/* =========================
+VOLUNTEER LIVE LOCATION
+========================= */
+
+socket.on("updateVolunteerLocation",(data)=>{
+
+const lat = data.lat;
+const lng = data.lng;
+
+if(volunteerMarker){
+
+volunteerMarker.setLatLng([lat,lng]);
+
+}else{
+
+volunteerMarker = L.marker([lat,lng])
+.addTo(map)
+.bindPopup("Volunteer Live Location");
+
+}
+
+});
+
+
+/* =========================
+REAL TIME NOTIFICATIONS
+========================= */
+
+socket.on("newFoodDonation",(data)=>{
+
+alert(
+"🍱 New Food Donation\n"+
+"Food: "+data.foodType+
+"\nQuantity: "+data.quantity+
+"\nLocation: "+data.location
+);
+
+});
+
+
+socket.on("deliveryUpdate",(data)=>{
+
+alert(
+"🚚 Delivery Status Updated\n"+
+"Status: "+data.status
+);
+
+});
 
 </script>
 
