@@ -3,6 +3,7 @@ const dotenv = require("dotenv");
 const connectDB = require("./config/db");
 const http = require("http");
 const { Server } = require("socket.io");
+const path = require("path");
 
 dotenv.config();
 
@@ -28,11 +29,13 @@ connectDB();
 app.use(express.json());
 app.use(express.urlencoded({extended:true}));
 
-/* Static folders */
-app.use(express.static("public"));
-app.use("/uploads",express.static("public/uploads"));
+/* Static folder */
+app.use(express.static(path.join(__dirname,"public")));
+app.use("/uploads",express.static(path.join(__dirname,"public/uploads")));
 
-/* Routes */
+
+/* ================= API ROUTES ================= */
+
 const userRoutes = require("./routes/userRoutes");
 const foodRoutes = require("./routes/foodRoutes");
 const donorRoutes = require("./routes/donorRoutes");
@@ -47,9 +50,22 @@ app.use("/api/request",requestRoutes);
 app.use("/api/ngo",ngoRoutes);
 app.use("/api/admin",adminRoutes);
 
-/* Default route */
+
+/* ================= FRONTEND ROUTES ================= */
+
+/* Home page */
 app.get("/",(req,res)=>{
-  res.sendFile(__dirname+"/public/index.html");
+res.sendFile(path.join(__dirname,"public","index.html"));
+});
+
+/* Serve any HTML page from public */
+
+app.get("/:page",(req,res)=>{
+
+const page = req.params.page;
+
+res.sendFile(path.join(__dirname,"public",page));
+
 });
 
 
@@ -105,7 +121,7 @@ console.log("Client disconnected:",socket.id);
 });
 
 
-/* Server port */
+/* ================= SERVER START ================= */
 
 const PORT = process.env.PORT || 5000;
 
