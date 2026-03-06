@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="en">
 
 <head>
@@ -14,28 +15,65 @@ href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet"
 href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css"/>
 
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
 <style>
 
-body{
+*{
 margin:0;
-font-family:Arial;
+padding:0;
+box-sizing:border-box;
+font-family:"Poppins",sans-serif;
 }
+
+body{
+background:#f5f7fb;
+color:#333;
+}
+
+/* NAVBAR */
+
+.navbar{
+background:#1e293b;
+color:white;
+padding:15px 40px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+flex-wrap:wrap;
+}
+
+.nav-links a{
+color:white;
+text-decoration:none;
+margin:8px 12px;
+font-size:14px;
+}
+
+.nav-links a:hover{
+color:#4ade80;
+}
+
+/* MAP */
 
 #map{
-height:100vh;
-}
-
-button{
-padding:6px 10px;
-border:none;
-border-radius:4px;
-background:#28a745;
-color:white;
-cursor:pointer;
+height:calc(100vh - 70px);
+width:100%;
 }
 
 .navigate{
 background:#007bff;
+margin-top:5px;
+}
+
+button{
+padding:8px 10px;
+border:none;
+border-radius:6px;
+background:#16a34a;
+color:white;
+cursor:pointer;
+font-size:14px;
 }
 
 </style>
@@ -43,6 +81,18 @@ background:#007bff;
 </head>
 
 <body>
+
+<div class="navbar">
+
+<h2>ShareBite</h2>
+
+<div class="nav-links">
+
+<a href="index.html">Home</a> <a href="dashboard.html">Dashboard</a> <a href="donate.html">Donate</a> <a href="request.html">Request</a> <a href="map.html">Food Map</a> <a href="request-map.html">Requests Map</a> <a href="ngo.html">NGOs</a>
+
+</div>
+
+</div>
 
 <div id="map"></div>
 
@@ -54,16 +104,12 @@ background:#007bff;
 
 <script>
 
-/* =========================
-SOCKET CONNECTION
-========================= */
+/* SOCKET CONNECTION */
 
 const socket = io(window.location.origin);
 
 
-/* =========================
-CREATE MAP
-========================= */
+/* CREATE MAP */
 
 const map = L.map("map").setView([14.6819,77.6006],13);
 
@@ -79,49 +125,40 @@ let userMarker;
 let routingControl;
 
 
-/* =========================
-DISTANCE CALCULATION
-========================= */
+/* DISTANCE CALCULATION */
 
-function getDistance(lat1, lon1, lat2, lon2){
+function getDistance(lat1,lon1,lat2,lon2){
 
 const R = 6371;
 
-const dLat = (lat2-lat1) * Math.PI/180;
-const dLon = (lon2-lon1) * Math.PI/180;
+const dLat = (lat2-lat1)*Math.PI/180;
+const dLon = (lon2-lon1)*Math.PI/180;
 
 const a =
-Math.sin(dLat/2) * Math.sin(dLat/2) +
+Math.sin(dLat/2)*Math.sin(dLat/2) +
 Math.cos(lat1*Math.PI/180) *
 Math.cos(lat2*Math.PI/180) *
-Math.sin(dLon/2) *
-Math.sin(dLon/2);
+Math.sin(dLon/2)*Math.sin(dLon/2);
 
-const c = 2 * Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+const c = 2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 
 return R*c;
 
 }
 
 
-/* =========================
-ETA CALCULATION
-========================= */
+/* ETA */
 
 function getETA(distance){
 
 const speed = 30;
 
-const time = (distance / speed) * 60;
-
-return Math.round(time);
+return Math.round((distance/speed)*60);
 
 }
 
 
-/* =========================
-DRAW REAL ROAD ROUTE
-========================= */
+/* DRAW ROUTE */
 
 function drawRoute(startLat,startLng,endLat,endLng){
 
@@ -149,9 +186,7 @@ show:false
 }
 
 
-/* =========================
-DETECT USER LOCATION
-========================= */
+/* USER LOCATION */
 
 if(navigator.geolocation){
 
@@ -168,9 +203,7 @@ userMarker = L.marker([lat,lng])
 .openPopup();
 
 
-/* =========================
-LOAD NEARBY FOOD
-========================= */
+/* LOAD FOOD */
 
 fetch(`/api/food/nearby?lat=${lat}&lng=${lng}`)
 
@@ -193,20 +226,24 @@ L.marker([food.latitude,food.longitude])
 
 .addTo(map)
 
-.bindPopup(
+.bindPopup(`
 
-`<b>${food.foodType}</b><br>
+<div style="width:220px">
 
-Quantity: ${food.quantity}<br>
+<h3>${food.foodType}</h3>
 
-Address: ${food.pickupAddress}<br>
+<p><b>Quantity:</b> ${food.quantity}</p>
 
-Distance: ${distance.toFixed(2)} km<br>
+<p><b>Location:</b> ${food.pickupAddress}</p>
 
-ETA: ${eta} min<br><br>
+<p><b>Distance:</b> ${distance.toFixed(2)} km</p>
+
+<p><b>ETA:</b> ${eta} minutes</p>
 
 <button onclick="acceptFood('${food._id}',${food.latitude},${food.longitude})">
-Accept
+
+Accept Pickup
+
 </button>
 
 <br><br>
@@ -218,9 +255,9 @@ Navigate
 
 </button>
 
-`
+</div>
 
-);
+`);
 
 });
 
@@ -231,9 +268,7 @@ Navigate
 }
 
 
-/* =========================
-ACCEPT FOOD
-========================= */
+/* ACCEPT FOOD */
 
 function acceptFood(foodId,lat,lng){
 
@@ -256,7 +291,7 @@ volunteerId:"demoVolunteer"
 
 .then(res=>res.json())
 
-.then(data=>{
+.then(()=>{
 
 alert("Food accepted");
 
@@ -273,9 +308,7 @@ drawRoute(userPos.lat,userPos.lng,lat,lng);
 }
 
 
-/* =========================
-GOOGLE NAVIGATION
-========================= */
+/* GOOGLE NAVIGATION */
 
 function navigate(lat,lng){
 
@@ -287,9 +320,7 @@ window.open(url,"_blank");
 }
 
 
-/* =========================
-VOLUNTEER LIVE LOCATION
-========================= */
+/* VOLUNTEER LIVE LOCATION */
 
 socket.on("updateVolunteerLocation",(data)=>{
 
@@ -311,9 +342,7 @@ volunteerMarker = L.marker([lat,lng])
 });
 
 
-/* =========================
-REAL TIME NOTIFICATIONS
-========================= */
+/* NOTIFICATIONS */
 
 socket.on("newFoodDonation",(data)=>{
 
@@ -325,7 +354,6 @@ alert(
 );
 
 });
-
 
 socket.on("deliveryUpdate",(data)=>{
 
@@ -339,5 +367,4 @@ alert(
 </script>
 
 </body>
-
 </html>

@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="en">
 
 <head>
@@ -6,25 +7,33 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>ShareBite Login</title>
+<title>Login | ShareBite</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 
 <style>
 
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:"Poppins",sans-serif;
+}
+
 body{
-font-family:Arial;
-background:#f4f4f4;
+background:#f5f7fb;
 display:flex;
-justify-content:center;
 align-items:center;
+justify-content:center;
 height:100vh;
 }
 
 .container{
 background:white;
-padding:30px;
+padding:35px;
+width:350px;
 border-radius:10px;
-width:320px;
-box-shadow:0 0 10px rgba(0,0,0,0.2);
+box-shadow:0 5px 15px rgba(0,0,0,0.1);
 }
 
 h2{
@@ -36,37 +45,23 @@ input{
 width:100%;
 padding:10px;
 margin:10px 0;
+border-radius:6px;
 border:1px solid #ccc;
-border-radius:5px;
 }
 
 button{
 width:100%;
 padding:10px;
-background:#28a745;
 border:none;
+background:#16a34a;
 color:white;
-font-size:16px;
+border-radius:6px;
 cursor:pointer;
-border-radius:5px;
+font-weight:500;
 }
 
 button:hover{
-background:#218838;
-}
-
-.password-box{
-display:flex;
-}
-
-.password-box input{
-flex:1;
-}
-
-.password-box button{
-width:50px;
-background:#ddd;
-color:black;
+background:#15803d;
 }
 
 .links{
@@ -76,7 +71,12 @@ margin-top:10px;
 
 .links a{
 text-decoration:none;
-color:#007bff;
+font-size:14px;
+color:#2563eb;
+}
+
+.links a:hover{
+text-decoration:underline;
 }
 
 </style>
@@ -87,32 +87,19 @@ color:#007bff;
 
 <div class="container">
 
-<h2>ShareBite Login</h2>
+<h2>Login</h2>
 
-<form id="loginForm">
+<input type="email" id="email" placeholder="Enter Email" required>
 
-<input type="email" id="email" placeholder="Email" required>
+<input type="password" id="password" placeholder="Enter Password" required>
 
-<div class="password-box">
-
-<input type="password" id="password" placeholder="Password" required>
-
-<button type="button" onclick="togglePassword()">👁</button>
-
-</div>
-
-<button type="submit">Login</button>
-
-</form>
+<button onclick="login()">Login</button>
 
 <div class="links">
 
 <p><a href="forgot.html">Forgot Password?</a></p>
 
-<p>
-Don't have an account? 
-<a href="register.html">Register</a>
-</p>
+<p>Don't have an account? <a href="register.html">Register</a></p>
 
 </div>
 
@@ -120,24 +107,17 @@ Don't have an account?
 
 <script>
 
-function togglePassword(){
-
-const pass = document.getElementById("password");
-
-if(pass.type === "password"){
-pass.type = "text";
-}else{
-pass.type = "password";
-}
-
-}
-
-document.getElementById("loginForm").addEventListener("submit",async function(e){
-
-e.preventDefault();
+async function login(){
 
 const email = document.getElementById("email").value;
 const password = document.getElementById("password").value;
+
+if(!email || !password){
+alert("Please enter email and password");
+return;
+}
+
+try{
 
 const res = await fetch("/api/users/login",{
 
@@ -156,23 +136,31 @@ password:password
 
 const data = await res.json();
 
-if(data.token){
+if(res.ok){
 
 localStorage.setItem("token",data.token);
 
-alert("Login Successful");
+alert("Login successful");
 
 window.location.href="dashboard.html";
 
 }else{
 
-alert(data.message || "Login Failed");
+alert(data.message || "Login failed");
 
 }
 
-});
+}catch(err){
+
+console.log(err);
+alert("Server error");
+
+}
+
+}
 
 </script>
 
 </body>
+
 </html>

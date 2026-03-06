@@ -419,6 +419,12 @@ message:"Food not found"
 
 }
 
+const validStatus = ["available","accepted","picked","delivered"];
+
+if(!validStatus.includes(status)){
+return res.status(400).json({message:"Invalid status"});
+}
+
 food.status = status;
 
 await food.save();
