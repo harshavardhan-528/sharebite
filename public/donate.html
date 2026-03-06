@@ -6,7 +6,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Donate Food - ShareBite</title>
+<title>Donate Food | ShareBite</title>
 
 <link rel="stylesheet"
 href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -15,49 +15,52 @@ href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 body{
 font-family:Arial;
-margin:0;
 background:#f4f4f4;
+margin:0;
+padding:20px;
 }
 
 .container{
-width:420px;
-margin:20px auto;
+max-width:500px;
+margin:auto;
 background:white;
-padding:20px;
-border-radius:8px;
-box-shadow:0 4px 10px rgba(0,0,0,0.2);
+padding:25px;
+border-radius:10px;
+box-shadow:0 0 10px rgba(0,0,0,0.2);
 }
 
 h2{
 text-align:center;
+margin-bottom:20px;
 }
 
-input,textarea{
+input{
 width:100%;
 padding:10px;
 margin:8px 0;
 border:1px solid #ccc;
-border-radius:4px;
+border-radius:5px;
 }
 
 button{
 width:100%;
 padding:12px;
+margin-top:10px;
 background:#28a745;
 color:white;
 border:none;
-border-radius:5px;
+border-radius:6px;
 cursor:pointer;
-margin-top:5px;
 }
 
-.detect{
-background:#007bff;
+button:hover{
+background:#1f7e34;
 }
 
 #map{
 height:300px;
-margin-top:10px;
+margin-top:15px;
+border-radius:8px;
 }
 
 </style>
@@ -72,175 +75,145 @@ margin-top:10px;
 
 <form id="donateForm">
 
-<input type="text" id="donor" placeholder="User ID" required>
+<input type="text" id="foodType" placeholder="Food Type (Rice, Meals)" required>
 
-<input type="text" id="foodType" placeholder="Food Type" required>
+<input type="text" id="quantity" placeholder="Quantity (10 plates)" required>
 
-<input type="text" id="quantity" placeholder="Quantity (20 plates)" required>
+<input type="text" id="pickupAddress" placeholder="Enter pickup location">
 
-<textarea id="description" placeholder="Food Description"></textarea>
-
-<input type="text" id="pickupAddress" placeholder="Type location like Swiggy">
-
-<button type="button" class="detect" onclick="detectLocation()">
-Use Current Location
+<button type="button" onclick="searchLocation()">
+Search Location
 </button>
 
+<input type="hidden" id="latitude">
+<input type="hidden" id="longitude">
+
+<div>
+
+<label for="donationTime">Donation Time</label>
+
+<input type="datetime-local" id="donationTime" name="donationTime"/>
+
+</div>
+
+<div>
+
 <label for="expiryTime">Expiry Time</label>
-<input type="datetime-local" id="expiryTime" name="expiryTime" required>
+<input type="datetime-local" id="expiryTime" name="expiryTime" required />
 
-<label for="image">Upload Image</label>
-<input type="file" id="image" name="image" accept="image/*">
+</div>
 
-<div id="map"></div>
+<div>
+
+<label for="image">Upload Food Image</label>
+<input type="file" id="image" name="image" accept="image/*" />
+
+</div>
 
 <button type="submit">Donate Food</button>
 
 </form>
 
+<div id="map"></div>
+
 </div>
+
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
 
-let latitude="";
-let longitude="";
+const API = window.location.origin;
 
-/* Initialize map */
+/* Create map */
 
-const map = L.map("map").setView([14.6819,77.6006],13);
+const map = L.map('map').setView([14.6819,77.6006],13);
 
 L.tileLayer(
-"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-{attribution:"© OpenStreetMap"}
-).addTo(map);
+'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+{
+maxZoom:19
+}).addTo(map);
 
 let marker;
 
 
+/* Location search */
 
-/* Detect current location */
+async function searchLocation(){
 
-function detectLocation(){
+const address = document.getElementById("pickupAddress").value;
 
-navigator.geolocation.getCurrentPosition(position=>{
-
-latitude = position.coords.latitude;
-longitude = position.coords.longitude;
-
-map.setView([latitude,longitude],15);
-
-if(marker){
-map.removeLayer(marker);
-}
-
-marker = L.marker([latitude,longitude]).addTo(map);
-
-document.getElementById("pickupAddress").value =
-"Current Location";
-
-});
-
-}
-
-
-
-/* Convert typed address to coordinates */
-
-document.getElementById("pickupAddress")
-.addEventListener("change",function(){
-
-const address = this.value;
-
-fetch(
+const res = await fetch(
 `https://nominatim.openstreetmap.org/search?format=json&q=${address}`
-)
+);
 
-.then(res=>res.json())
+const data = await res.json();
 
-.then(data=>{
+if(data.length === 0){
 
-if(data.length > 0){
+alert("Location not found");
+return;
 
-latitude = data[0].lat;
-longitude = data[0].lon;
+}
 
-map.setView([latitude,longitude],15);
+const lat = data[0].lat;
+const lon = data[0].lon;
+
+document.getElementById("latitude").value = lat;
+document.getElementById("longitude").value = lon;
+
+map.setView([lat,lon],15);
 
 if(marker){
-map.removeLayer(marker);
+
+marker.setLatLng([lat,lon]);
+
+}else{
+
+marker = L.marker([lat,lon]).addTo(map);
+
 }
 
-marker = L.marker([latitude,longitude]).addTo(map);
-
 }
-
-});
-
-});
-
 
 
 /* Submit donation */
 
-document.getElementById("donateForm")
-.addEventListener("submit",function(e){
+document.getElementById("donateForm").addEventListener("submit",async function(e){
 
 e.preventDefault();
 
 const formData = new FormData();
 
-formData.append("donor",
-document.getElementById("donor").value);
+formData.append("foodType",document.getElementById("foodType").value);
+formData.append("quantity",document.getElementById("quantity").value);
+formData.append("pickupAddress",document.getElementById("pickupAddress").value);
+formData.append("latitude",document.getElementById("latitude").value);
+formData.append("longitude",document.getElementById("longitude").value);
+formData.append("donationTime",document.getElementById("donationTime").value);
+formData.append("expiryTime",document.getElementById("expiryTime").value);
 
-formData.append("foodType",
-document.getElementById("foodType").value);
+const image = document.getElementById("image").files[0];
 
-formData.append("quantity",
-document.getElementById("quantity").value);
-
-formData.append("description",
-document.getElementById("description").value);
-
-formData.append("pickupAddress",
-document.getElementById("pickupAddress").value);
-
-formData.append("latitude",latitude);
-formData.append("longitude",longitude);
-
-formData.append("expiryTime",
-document.getElementById("expiryTime").value);
-
-const file =
-document.getElementById("image").files[0];
-
-if(file){
-formData.append("image",file);
+if(image){
+formData.append("image",image);
 }
 
-fetch("/api/food/donate",{
+const res = await fetch(API + "/api/food/donate",{
 
 method:"POST",
 body:formData
 
-})
-.then(res=>res.json())
-.then(data=>{
-
-alert("Food donation posted successfully!");
-
-document.getElementById("donateForm").reset();
-
-})
-.catch(()=>{
-alert("Error posting donation");
 });
+
+const data = await res.json();
+
+alert(data.message);
 
 });
 
 </script>
 
 </body>
-
 </html>

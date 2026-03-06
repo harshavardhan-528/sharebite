@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ShareBite - Forgot Password</title>
+
+<style>
+body{
+font-family: Arial, sans-serif;
+background:#f4f4f4;
+display:flex;
+justify-content:center;
+align-items:center;
+height:100vh;
+margin:0;
+}
+
+.container{
+background:white;
+padding:30px;
+border-radius:10px;
+width:320px;
+box-shadow:0 4px 10px rgba(0,0,0,0.1);
+text-align:center;
+}
+
+input{
+width:100%;
+padding:10px;
+margin:10px 0;
+border:1px solid #ccc;
+border-radius:5px;
+}
+
+button{
+width:100%;
+padding:10px;
+background:#28a745;
+border:none;
+color:white;
+font-size:16px;
+cursor:pointer;
+border-radius:5px;
+}
+
+button:hover{
+background:#1f7a34;
+}
+
+a{
+text-decoration:none;
+color:#007bff;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>Forgot Password</h2>
+
+<input type="email" id="email" placeholder="Enter your email" required>
+
+<button id="sendBtn">Send Reset Link</button>
+
+<p><a href="login.html">Back to Login</a></p>
+
+</div>
+
+<script>
+
+document.getElementById("sendBtn").addEventListener("click", async function(){
+
+const email = document.getElementById("email").value;
+
+if(!email){
+alert("Please enter your email");
+return;
+}
+
+try{
+
+const res = await fetch("/api/users/forgot-password",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({email})
+});
+
+const data = await res.json();
+
+alert(data.message || "Reset link sent");
+
+}catch(err){
+alert("Server error");
+console.error(err);
+}
+
+});
+
+</script>
+
+</body>
+</html>

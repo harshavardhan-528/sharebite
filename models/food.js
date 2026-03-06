@@ -26,6 +26,8 @@ latitude:Number,
 
 longitude:Number,
 
+donationTime:Date,
+
 location:{
 type:{
 type:String,

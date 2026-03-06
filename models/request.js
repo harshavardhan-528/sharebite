@@ -3,21 +3,34 @@ const mongoose = require("mongoose");
 const requestSchema = new mongoose.Schema({
 
 requester:{
-type: mongoose.Schema.Types.ObjectId,
+type:mongoose.Schema.Types.ObjectId,
 ref:"User",
 required:true
 },
 
-foodType:String,
+foodType:{
+type:String,
+required:true
+},
 
-quantity:String,
+quantity:{
+type:String,
+required:true
+},
 
-description:String,
-
-location:String,
+location:{
+type:String,
+required:true
+},
 
 latitude:Number,
+
 longitude:Number,
+
+volunteer:{
+type:mongoose.Schema.Types.ObjectId,
+ref:"User"
+},
 
 status:{
 type:String,

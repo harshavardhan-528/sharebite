@@ -19,6 +19,7 @@ description,
 pickupAddress,
 latitude,
 longitude,
+donationTime,
 expiryTime
 } = req.body;
 
@@ -33,6 +34,7 @@ description,
 pickupAddress,
 latitude: parseFloat(latitude),
 longitude: parseFloat(longitude),
+donationTime,
 
 location:{
 type:"Point",
@@ -49,6 +51,19 @@ status:"available"
 });
 
 await food.save();
+
+const io = req.app.get("io");
+
+io.emit("newFoodDonation",{
+foodType,
+quantity,
+location: pickupAddress
+});
+
+res.status(201).json({
+message:"Food donation posted successfully",
+food
+});
 
 
 /* EMAIL TO DONOR */

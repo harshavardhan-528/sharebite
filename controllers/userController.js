@@ -1,7 +1,8 @@
 const User = require("../models/user");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-
+const crypto = require("crypto");
+const nodemailer = require("nodemailer");
 
 // ======================
 // Register User
@@ -113,6 +114,104 @@ await user.save();
 
 res.json({
 message:"Location updated"
+});
+
+}catch(err){
+
+res.status(500).json({
+error:err.message
+});
+
+}
+
+};
+
+exports.forgotPassword = async (req,res)=>{
+
+try{
+
+const {email} = req.body;
+
+const user = await User.findOne({email});
+
+if(!user){
+
+return res.json({message:"User not found"});
+}
+
+const token = crypto.randomBytes(32).toString("hex");
+
+user.resetToken = token;
+
+await user.save();
+
+const resetLink = `https://sharebite-x3dv.onrender.com/reset.html?token=${token}`;
+
+const transporter = nodemailer.createTransport({
+
+service:"gmail",
+
+auth:{
+user:process.env.EMAIL_USER,
+pass:process.env.EMAIL_PASS
+}
+
+});
+
+await transporter.sendMail({
+
+to:email,
+
+subject:"Password Reset",
+
+html:`Click this link to reset password: <a href="${resetLink}">${resetLink}</a>`
+
+});
+
+res.json({message:"Reset link sent to email"});
+
+}catch(err){
+
+res.status(500).json({error:err.message});
+
+}
+
+};
+// ======================
+// Reset Password
+// ======================
+exports.resetPassword = async (req,res)=>{
+
+try{
+
+const {token,password} = req.body;
+
+/* find user with reset token */
+
+const user = await User.findOne({resetToken:token});
+
+if(!user){
+
+return res.status(400).json({
+message:"Invalid or expired token"
+});
+
+}
+
+/* hash new password */
+
+const salt = await bcrypt.genSalt(10);
+const hashedPassword = await bcrypt.hash(password,salt);
+
+/* update password */
+
+user.password = hashedPassword;
+user.resetToken = undefined;
+
+await user.save();
+
+res.json({
+message:"Password reset successful"
 });
 
 }catch(err){

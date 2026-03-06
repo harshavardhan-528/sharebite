@@ -32,12 +32,12 @@ width:100%;
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
 
 <script>
 
-const socket = io("http://localhost:5000");
+/* Connect socket */
+const socket = io();
 
 /* Create Map */
 
@@ -52,9 +52,12 @@ attribution:"© OpenStreetMap"
 
 let marker;
 
+
 /* Send volunteer location */
 
 function sendLocation(){
+
+if(navigator.geolocation){
 
 navigator.geolocation.getCurrentPosition(position=>{
 
@@ -87,9 +90,55 @@ marker = L.marker([lat,lng])
 
 }
 
-/* Update every 5 seconds */
+}
+
+
+/* Update location every 5 seconds */
 
 setInterval(sendLocation,5000);
+
+
+
+/* ========================
+REAL TIME NOTIFICATIONS
+======================== */
+
+
+/* New donation */
+
+socket.on("newFoodDonation",(data)=>{
+
+alert(
+"🍱 New Food Donation Available\n"+
+"Food: "+data.foodType+
+"\nQuantity: "+data.quantity+
+"\nLocation: "+data.location
+);
+
+});
+
+
+/* New request */
+
+socket.on("newFoodRequest",(data)=>{
+
+alert(
+"📢 Someone requested food\n"+
+"Food: "+data.foodType+
+"\nQuantity: "+data.quantity+
+"\nLocation: "+data.location
+);
+
+});
+
+
+/* Request accepted */
+
+socket.on("requestAccepted",(data)=>{
+
+alert("✅ Food request accepted by volunteer");
+
+});
 
 </script>
 

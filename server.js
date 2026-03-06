@@ -52,27 +52,27 @@ app.get("/",(req,res)=>{
   res.sendFile(__dirname+"/public/index.html");
 });
 
-/* Socket connection */
+
+/* ================= SOCKET.IO ================= */
 
 io.on("connection",(socket)=>{
 
 console.log("Client connected:",socket.id);
 
-
-/* Volunteer sends live location */
+/* Volunteer location */
 
 socket.on("volunteerLocation",(data)=>{
 
 console.log("Volunteer location:",data);
 
-/* Broadcast to all users */
-
-io.emit("volunteerLocation",data);
+io.emit("updateVolunteerLocation",{
+lat:data.lat,
+lng:data.lng
+});
 
 });
 
-
-/* New food donation notification */
+/* New food donation */
 
 socket.on("newDonation",(data)=>{
 
@@ -80,6 +80,21 @@ io.emit("newDonation",data);
 
 });
 
+/* New food request */
+
+socket.on("newFoodRequest",(data)=>{
+
+io.emit("newFoodRequest",data);
+
+});
+
+/* Request accepted */
+
+socket.on("requestAccepted",(data)=>{
+
+io.emit("requestAccepted",data);
+
+});
 
 socket.on("disconnect",()=>{
 

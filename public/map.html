@@ -23,14 +23,12 @@ height:100vh;
 }
 
 button{
-
 padding:6px 10px;
 border:none;
 border-radius:4px;
 background:#28a745;
 color:white;
 cursor:pointer;
-
 }
 
 .navigate{
@@ -46,12 +44,13 @@ background:#007bff;
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
 
 <script>
 
-const socket = io("http://localhost:5000");
+/* Connect socket */
+
+const socket = io();
 
 /* Create map */
 
@@ -66,9 +65,10 @@ attribution:"© OpenStreetMap"
 
 let volunteerMarker;
 
-/* Listen volunteer live location */
 
-socket.on("volunteerLocation",(data)=>{
+/* Live volunteer location */
+
+socket.on("updateVolunteerLocation",(data)=>{
 
 const lat = data.lat;
 const lng = data.lng;
@@ -112,13 +112,24 @@ fetch(`/api/food/nearby?lat=${lat}&lng=${lng}`)
 
 data.foods.forEach(food=>{
 
+const donationTime = food.donationTime
+? new Date(food.donationTime).toLocaleString()
+: "Not specified";
+
+const expiryTime = food.expiryTime
+? new Date(food.expiryTime).toLocaleString()
+: "Not specified";
+
+
 L.marker([food.latitude,food.longitude])
 .addTo(map)
 .bindPopup(
 
 `<b>${food.foodType}</b><br>
 Quantity: ${food.quantity}<br>
-Address: ${food.pickupAddress}<br><br>
+Address: ${food.pickupAddress}<br>
+Donation Time: ${donationTime}<br>
+Expiry Time: ${expiryTime}<br><br>
 
 <button onclick="acceptFood('${food._id}')">
 Accept
