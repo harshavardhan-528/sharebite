@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>NGO List - ShareBite</title>
+
+<style>
+
+body{
+font-family:Arial;
+background:#f4f4f4;
+padding:30px;
+}
+
+h1{
+text-align:center;
+}
+
+.container{
+max-width:800px;
+margin:auto;
+}
+
+.card{
+background:white;
+padding:20px;
+margin-bottom:15px;
+border-radius:8px;
+box-shadow:0 2px 5px rgba(0,0,0,0.2);
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>NGO Partners</h1>
+
+<div class="container" id="ngoList"></div>
+
+
+<script>
+
+const API_BASE = window.location.origin;
+
+fetch(API_BASE + "/api/ngo/all")
+
+.then(res=>res.json())
+
+.then(data=>{
+
+const container = document.getElementById("ngoList");
+
+data.forEach(ngo=>{
+
+container.innerHTML += `
+<div class="card">
+<h3>${ngo.name}</h3>
+<p><b>Location:</b> ${ngo.location}</p>
+<p><b>Contact:</b> ${ngo.phone}</p>
+</div>
+`;
+
+});
+
+});
+
+</script>
+
+</body>
+
+</html>

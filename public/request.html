@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Request Food - ShareBite</title>
+
+<style>
+
+body{
+font-family:Arial;
+background:#f4f4f4;
+margin:0;
+padding:40px;
+}
+
+.container{
+max-width:500px;
+margin:auto;
+background:white;
+padding:25px;
+border-radius:8px;
+box-shadow:0 2px 5px rgba(0,0,0,0.2);
+}
+
+h2{
+text-align:center;
+}
+
+input,textarea,button{
+width:100%;
+padding:10px;
+margin-top:10px;
+border-radius:5px;
+border:1px solid #ccc;
+}
+
+button{
+background:#28a745;
+color:white;
+border:none;
+cursor:pointer;
+}
+
+button:hover{
+background:#1e7e34;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>Request Food</h2>
+
+<input type="text" id="foodType" placeholder="Food Type">
+
+<input type="number" id="quantity" placeholder="Quantity Needed">
+
+<textarea id="location" placeholder="Location / Address"></textarea>
+
+<button onclick="submitRequest()">Submit Request</button>
+
+</div>
+
+
+<script>
+
+const API_BASE = window.location.origin;
+
+function submitRequest(){
+
+const foodType = document.getElementById("foodType").value;
+const quantity = document.getElementById("quantity").value;
+const location = document.getElementById("location").value;
+
+fetch(API_BASE + "/api/request/create",{
+
+method:"POST",
+
+headers:{
+"Content-Type":"application/json"
+},
+
+body:JSON.stringify({
+foodType,
+quantity,
+location
+})
+
+})
+
+.then(res=>res.json())
+
+.then(data=>{
+
+alert("Food request submitted");
+
+window.location.href="dashboard.html";
+
+})
+
+.catch(err=>{
+console.log(err);
+});
+
+}
+
+</script>
+
+</body>
+</html>
