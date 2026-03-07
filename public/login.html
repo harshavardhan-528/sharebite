@@ -89,11 +89,15 @@ text-decoration:underline;
 
 <h2>Login</h2>
 
+<form id="loginForm">
+
 <input type="email" id="email" placeholder="Enter Email" required>
 
 <input type="password" id="password" placeholder="Enter Password" required>
 
-<button onclick="login()">Login</button>
+<button type="submit" id="loginBtn">Login</button>
+
+</form>
 
 <div class="links">
 
@@ -107,10 +111,17 @@ text-decoration:underline;
 
 <script>
 
-async function login(){
+document.getElementById("loginForm")
+.addEventListener("submit", login);
 
-const email = document.getElementById("email").value;
-const password = document.getElementById("password").value;
+async function login(e){
+
+e.preventDefault();
+
+const email = document.getElementById("email").value.trim();
+const password = document.getElementById("password").value.trim();
+
+const btn = document.getElementById("loginBtn");
 
 if(!email || !password){
 alert("Please enter email and password");
@@ -118,6 +129,9 @@ return;
 }
 
 try{
+
+btn.disabled = true;
+btn.innerText = "Logging in...";
 
 const res = await fetch("/api/users/login",{
 
@@ -128,8 +142,8 @@ headers:{
 },
 
 body:JSON.stringify({
-email:email,
-password:password
+email,
+password
 })
 
 });
@@ -138,8 +152,13 @@ const data = await res.json();
 
 if(res.ok){
 
+/* save login session */
+
 localStorage.setItem("token", data.token);
+
+if(data.user){
 localStorage.setItem("user", JSON.stringify(data.user));
+}
 
 alert("Login successful");
 
@@ -147,16 +166,19 @@ window.location.href="dashboard.html";
 
 }else{
 
-alert(data.message || "Login failed");
+alert(data.message || data.error || "Login failed");
 
 }
 
 }catch(err){
 
-console.log(err);
-alert("Server error");
+console.error(err);
+alert("Server error. Please try again.");
 
 }
+
+btn.disabled = false;
+btn.innerText = "Login";
 
 }
 
