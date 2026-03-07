@@ -173,16 +173,19 @@ marker = L.marker([lat,lon]).addTo(map);
 /* SUBMIT REQUEST */
 
 document.getElementById("requestForm")
-.addEventListener("submit",async function(e){
+.addEventListener("submit", async function(e){
 
 e.preventDefault();
+
+const token = localStorage.getItem("token");
 
 const res = await fetch("/api/request/create",{
 
 method:"POST",
 
 headers:{
-"Content-Type":"application/json"
+"Content-Type":"application/json",
+"Authorization":"Bearer " + token
 },
 
 body:JSON.stringify({
@@ -199,11 +202,26 @@ longitude:document.getElementById("longitude").value
 
 const data = await res.json();
 
-alert(data.message);
+/* SUCCESS */
+
+if(res.ok){
+
+alert("Food request created successfully");
 
 window.location.href="request-map.html";
 
+}
+
+/* ERROR */
+
+else{
+
+alert(data.error || data.message || "Request failed");
+
+}
+
 });
+
 
 </script>
 

@@ -19,22 +19,38 @@ latitude,
 longitude
 } = req.body;
 
+
+/* VALIDATION */
+
+if(!foodType || !quantity || !location){
+
+return res.status(400).json({
+error:"Food type, quantity and location are required"
+});
+
+}
+
+
+const lat = parseFloat(latitude);
+const lng = parseFloat(longitude);
+
+
+/* CREATE REQUEST */
+
 const request = new Request({
 
-requester,
+requester: requester || null,
+
 foodType,
 quantity,
 location,
 
-latitude: parseFloat(latitude),
-longitude: parseFloat(longitude),
+latitude: lat,
+longitude: lng,
 
 locationPoint:{
 type:"Point",
-coordinates:[
-parseFloat(longitude),
-parseFloat(latitude)
-]
+coordinates:[lng,lat]
 },
 
 status:"pending"
@@ -123,11 +139,23 @@ message:"Request not found"
 
 }
 
+/* Prevent multiple accepts */
+
+if(request.status !== "pending"){
+
+return res.status(400).json({
+message:"Request already accepted"
+});
+
+}
+
 request.status="accepted";
 request.volunteer=volunteerId;
 
 await request.save();
 
+
+/* SOCKET */
 
 const io = req.app.get("io");
 
@@ -245,6 +273,14 @@ const {lat,lng} = req.query;
 
 const latitude = parseFloat(lat);
 const longitude = parseFloat(lng);
+
+if(!latitude || !longitude){
+
+return res.status(400).json({
+error:"Latitude and Longitude required"
+});
+
+}
 
 const requests = await Request.find({
 
