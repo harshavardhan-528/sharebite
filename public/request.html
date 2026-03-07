@@ -178,6 +178,7 @@ document.getElementById("requestForm")
 e.preventDefault();
 
 const token = localStorage.getItem("token");
+const user = JSON.parse(localStorage.getItem("user"));   // get logged in user
 
 const res = await fetch("/api/request/create",{
 
@@ -189,6 +190,8 @@ headers:{
 },
 
 body:JSON.stringify({
+
+requester: user._id,   // ⭐ IMPORTANT FIX
 
 foodType:document.getElementById("foodType").value,
 quantity:document.getElementById("quantity").value,
@@ -202,26 +205,19 @@ longitude:document.getElementById("longitude").value
 
 const data = await res.json();
 
-/* SUCCESS */
-
 if(res.ok){
 
 alert("Food request created successfully");
 
 window.location.href="request-map.html";
 
-}
+}else{
 
-/* ERROR */
-
-else{
-
-alert(data.error || data.message || "Request failed");
+alert(data.error || data.message);
 
 }
 
 });
-
 
 </script>
 
