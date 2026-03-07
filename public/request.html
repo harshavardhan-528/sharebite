@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="en">
 
 <head>
@@ -6,124 +7,61 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Nearby Food Requests | ShareBite</title>
+<title>Request Food | ShareBite</title>
 
 <link rel="stylesheet"
-href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 
 <style>
 
-*{
-margin:0;
-padding:0;
-box-sizing:border-box;
-font-family:"Poppins",sans-serif;
-}
-
 body{
+font-family:Poppins;
 background:#f5f7fb;
-color:#333;
+margin:0;
+padding:20px;
 }
-
-/* NAVBAR */
-
-.navbar{
-background:#1e293b;
-color:white;
-padding:15px 40px;
-display:flex;
-justify-content:space-between;
-align-items:center;
-flex-wrap:wrap;
-}
-
-.navbar h2{
-font-weight:600;
-}
-
-.nav-links a{
-color:white;
-text-decoration:none;
-margin:8px 12px;
-font-size:14px;
-}
-
-.nav-links a:hover{
-color:#4ade80;
-}
-
-/* PAGE CONTAINER */
 
 .container{
-max-width:900px;
+max-width:600px;
 margin:auto;
-padding:40px 20px;
+background:white;
+padding:30px;
+border-radius:10px;
+box-shadow:0 4px 12px rgba(0,0,0,0.1);
 }
 
-/* CARD */
-
-.card{
-background:white;
-padding:25px;
-border-radius:10px;
-box-shadow:0 4px 10px rgba(0,0,0,0.08);
+h2{
+text-align:center;
 margin-bottom:20px;
 }
 
-/* BUTTON */
+input{
+width:100%;
+padding:10px;
+margin:10px 0;
+border-radius:6px;
+border:1px solid #ccc;
+}
 
 button{
 padding:10px 18px;
 border:none;
 border-radius:6px;
-background:#16a34a;
-color:white;
-cursor:pointer;
-font-weight:500;
-}
-
-button:hover{
-background:#15803d;
-}
-
-/* INPUT */
-
-input,select{
-width:100%;
-padding:10px;
-margin:10px 0;
-border:1px solid #ccc;
-border-radius:6px;
-}
-
-</style>
-
-<style>
-
-body{
-margin:0;
-font-family:Arial;
-}
-
-#map{
-height:100vh;
-}
-
-button{
-
-padding:6px 10px;
-border:none;
-border-radius:4px;
 background:#ff9800;
 color:white;
 cursor:pointer;
-
 }
 
-.navigate{
-background:#007bff;
+button:hover{
+background:#e68900;
+}
+
+#map{
+height:300px;
+margin-top:15px;
+border-radius:8px;
 }
 
 </style>
@@ -132,200 +70,114 @@ background:#007bff;
 
 <body>
 
-<div class="navbar">
+<div class="container">
 
-<h2>ShareBite</h2>
+<h2>Request Food</h2>
 
-<div class="nav-links">
+<form id="requestForm">
 
-<a href="index.html">Home</a> <a href="dashboard.html">Dashboard</a> <a href="donate.html">Donate</a> <a href="request.html">Request</a> <a href="map.html">Food Map</a> <a href="request-map.html">Requests Map</a> <a href="ngo.html">NGOs</a>
+<input type="text" id="foodType" placeholder="Food Type Needed" required>
 
-</div>
+<input type="text" id="quantity" placeholder="Quantity Needed" required>
 
-</div>
+<input type="text" id="location" placeholder="Enter Location">
+
+<button type="button" onclick="searchLocation()">Search Location</button>
+
+<button type="button" onclick="detectLocation()">Use Current Location</button>
+
+<input type="hidden" id="latitude">
+<input type="hidden" id="longitude">
+
+<button type="submit">Submit Request</button>
+
+</form>
 
 <div id="map"></div>
 
+</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="/socket.io/socket.io.js"></script>
 
 <script>
-
-/* ================================
-SOCKET CONNECTION
-================================ */
-
-const socket = io(window.location.origin);
-
-
-/* ================================
-CREATE MAP
-================================ */
 
 const map = L.map("map").setView([14.6819,77.6006],13);
 
 L.tileLayer(
 "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-{
-attribution:"© OpenStreetMap"
-}
+{maxZoom:19}
 ).addTo(map);
 
-let volunteerMarker;
-let userMarker;
-let routeLine;
+let marker;
 
 
-/* ================================
-DISTANCE FUNCTION
-================================ */
+/* SEARCH LOCATION */
 
-function calculateDistance(lat1,lon1,lat2,lon2){
+async function searchLocation(){
 
-const R = 6371;
+const address = document.getElementById("location").value;
 
-const dLat = (lat2-lat1)*Math.PI/180;
-const dLon = (lon2-lon1)*Math.PI/180;
+const res = await fetch(
+`https://nominatim.openstreetmap.org/search?format=json&q=${address}`
+);
 
-const a =
-Math.sin(dLat/2)*Math.sin(dLat/2) +
-Math.cos(lat1*Math.PI/180)*
-Math.cos(lat2*Math.PI/180)*
-Math.sin(dLon/2)*Math.sin(dLon/2);
+const data = await res.json();
 
-const c = 2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+if(data.length===0){
+alert("Location not found");
+return;
+}
 
-return R*c;
+const lat = data[0].lat;
+const lon = data[0].lon;
+
+document.getElementById("latitude").value = lat;
+document.getElementById("longitude").value = lon;
+
+map.setView([lat,lon],15);
+
+if(marker){
+marker.setLatLng([lat,lon]);
+}else{
+marker = L.marker([lat,lon]).addTo(map);
+}
 
 }
 
 
-/* ================================
-ETA FUNCTION
-================================ */
+/* CURRENT LOCATION */
 
-function calculateETA(distance){
-
-const speed = 30;
-
-const time = distance/speed;
-
-return Math.round(time*60);
-
-}
-
-
-/* ================================
-DRAW ROUTE
-================================ */
-
-function drawRoute(vLat,vLng,rLat,rLng){
-
-const route = [
-[vLat,vLng],
-[rLat,rLng]
-];
-
-if(routeLine){
-
-map.removeLayer(routeLine);
-
-}
-
-routeLine = L.polyline(route,{
-color:"purple",
-weight:4
-}).addTo(map);
-
-}
-
-
-/* ================================
-DETECT USER LOCATION
-================================ */
+function detectLocation(){
 
 navigator.geolocation.getCurrentPosition(position=>{
 
 const lat = position.coords.latitude;
-const lng = position.coords.longitude;
+const lon = position.coords.longitude;
 
-map.setView([lat,lng],13);
+document.getElementById("latitude").value = lat;
+document.getElementById("longitude").value = lon;
 
-userMarker = L.marker([lat,lng])
-.addTo(map)
-.bindPopup("You are here");
+map.setView([lat,lon],15);
 
-
-/* ================================
-LOAD NEARBY REQUESTS
-================================ */
-
-fetch(`/api/request/nearby?lat=${lat}&lng=${lng}`)
-
-.then(res=>res.json())
-
-.then(data=>{
-
-data.requests.forEach(request=>{
-
-const distance = calculateDistance(
-lat,
-lng,
-request.latitude,
-request.longitude
-);
-
-const eta = calculateETA(distance);
-
-L.marker([request.latitude,request.longitude])
-
-.addTo(map)
-
-.bindPopup(
-
-`<b>Food Needed</b><br>
-
-Type: ${request.foodType}<br>
-
-Quantity: ${request.quantity}<br>
-
-Location: ${request.location}<br>
-
-Distance: ${distance.toFixed(2)} km<br>
-
-ETA: ${eta} min<br><br>
-
-<button onclick="acceptRequest('${request._id}')">
-Accept Request
-</button>
-
-<br><br>
-
-<button class="navigate"
-onclick="navigate(${request.latitude},${request.longitude})">
-
-Navigate
-
-</button>
-
-`
-
-);
+if(marker){
+marker.setLatLng([lat,lon]);
+}else{
+marker = L.marker([lat,lon]).addTo(map);
+}
 
 });
 
-});
-
-});
+}
 
 
-/* ================================
-ACCEPT REQUEST
-================================ */
+/* SUBMIT REQUEST */
 
-function acceptRequest(requestId){
+document.getElementById("requestForm")
+.addEventListener("submit",async function(e){
 
-fetch("/api/request/accept",{
+e.preventDefault();
+
+const res = await fetch("/api/request/create",{
 
 method:"POST",
 
@@ -335,88 +187,25 @@ headers:{
 
 body:JSON.stringify({
 
-requestId:requestId,
-volunteerId:"demoVolunteer"
+foodType:document.getElementById("foodType").value,
+quantity:document.getElementById("quantity").value,
+location:document.getElementById("location").value,
+latitude:document.getElementById("latitude").value,
+longitude:document.getElementById("longitude").value
 
 })
 
-})
-
-.then(res=>res.json())
-
-.then(data=>{
-
-alert("Request accepted");
-
-location.reload();
-
 });
 
-}
+const data = await res.json();
 
+alert(data.message);
 
-/* ================================
-GOOGLE NAVIGATION
-================================ */
-
-function navigate(lat,lng){
-
-const url =
-`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-
-window.open(url,"_blank");
-
-}
-
-
-/* ================================
-VOLUNTEER LIVE LOCATION
-================================ */
-
-socket.on("updateVolunteerLocation",(data)=>{
-
-const lat = data.lat;
-const lng = data.lng;
-
-if(volunteerMarker){
-
-volunteerMarker.setLatLng([lat,lng]);
-
-}else{
-
-volunteerMarker = L.marker([lat,lng])
-.addTo(map)
-.bindPopup("Volunteer Live Location");
-
-}
-
-});
-
-
-/* ================================
-REAL TIME NOTIFICATIONS
-================================ */
-
-socket.on("newFoodRequest",(data)=>{
-
-alert(
-"📢 New Food Request\n"+
-"Food: "+data.foodType+
-"\nQuantity: "+data.quantity+
-"\nLocation: "+data.location
-);
-
-});
-
-
-socket.on("requestAccepted",(data)=>{
-
-alert("✅ A volunteer accepted a food request");
+window.location.href="request-map.html";
 
 });
 
 </script>
 
 </body>
-
 </html>

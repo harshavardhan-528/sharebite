@@ -52,6 +52,7 @@ border-radius:6px;
 background:#16a34a;
 color:white;
 cursor:pointer;
+margin-top:5px;
 }
 
 button:hover{
@@ -89,17 +90,15 @@ border-radius:8px;
 <input type="hidden" id="latitude">
 <input type="hidden" id="longitude">
 
-<input type="hidden" id="latitude">
-<input type="hidden" id="longitude">
-
-<label for="donationTime">Donation Time</label>
+<label for="donationTime">Donation Time</label> 
 <input type="datetime-local" id="donationTime" required>
 
-<label for="expiryTime">Expiry Time</label>
+<label for="expiryTime">Expiry Time</label> 
 <input type="datetime-local" id="expiryTime" required>
 
 <label for="image">Upload Image</label>
 <input type="file" id="image" accept="image/*">
+
 <button type="submit">Donate Food</button>
 
 </form>
@@ -114,6 +113,8 @@ border-radius:8px;
 
 const API = window.location.origin;
 
+/* MAP INITIALIZATION */
+
 const map = L.map("map").setView([14.6819,77.6006],13);
 
 L.tileLayer(
@@ -123,9 +124,17 @@ L.tileLayer(
 
 let marker;
 
+
+/* SEARCH LOCATION */
+
 async function searchLocation(){
 
 const address = document.getElementById("pickupAddress").value;
+
+if(!address){
+alert("Please enter location");
+return;
+}
 
 const res = await fetch(
 `https://nominatim.openstreetmap.org/search?format=json&q=${address}`
@@ -154,7 +163,15 @@ marker = L.marker([lat,lon]).addTo(map);
 
 }
 
+
+/* CURRENT LOCATION */
+
 function detectLocation(){
+
+if(!navigator.geolocation){
+alert("Geolocation not supported");
+return;
+}
 
 navigator.geolocation.getCurrentPosition(position=>{
 
@@ -176,7 +193,11 @@ marker = L.marker([lat,lon]).addTo(map);
 
 }
 
-document.getElementById("donateForm").addEventListener("submit",async function(e){
+
+/* FORM SUBMIT */
+
+document.getElementById("donateForm")
+.addEventListener("submit",async function(e){
 
 e.preventDefault();
 
@@ -196,19 +217,45 @@ if(image){
 formData.append("image",image);
 }
 
-const res=await fetch(API+"/api/food/donate",{
+const token = localStorage.getItem("token");
+
+try{
+
+const res = await fetch(API + "/api/food/donate",{
+
 method:"POST",
+
+headers:{
+"Authorization":"Bearer " + token
+},
+
 body:formData
+
 });
 
-const data=await res.json();
+const data = await res.json();
 
-alert(data.message);
+if(res.ok){
+
+alert("Food donated successfully");
+
+window.location.href="dashboard.html";
+
+}else{
+
+alert(data.error || "Donation failed");
+
+}
+
+}catch(err){
+
+alert("Server error");
+
+}
 
 });
 
 </script>
 
 </body>
-
 </html>
